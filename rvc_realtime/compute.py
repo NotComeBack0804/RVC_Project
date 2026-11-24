@@ -128,7 +128,8 @@ def select_compute(override: Optional[str] = None) -> ComputeInfo:
     ok, device, name, err = probe_directml()
     if not ok:
         hint = (
-            "请确认已用 .\\scripts\\install_windows.ps1 -WithRvcCpu 安装官方 requirments_cpu_py312.txt，"
+            "请确认已安装官方 requirments_cpu_py312.txt 中的 torch-directml 与 onnxruntime-directml"
+            "（便携包已预装；源码安装请运行 .\\scripts\\install_windows.ps1 -WithRvcCpu），"
             "并且本机已安装支持 DirectX 12 的 AMD 显卡驱动。"
         )
         return _cpu_info(requested, (err + " " + hint).strip())

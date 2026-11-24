@@ -96,16 +96,24 @@ def _run_step(cwd: Path, args: list[str], log_path: Path, title: str, cb: Option
     _notify(cb, f"完成：{title}")
 
 
-def _ensure_training_assets(version: str, sr: str) -> tuple[str, str]:
+def _ensure_training_assets(
+    version: str,
+    sr: str,
+    pretrained_g: str | None = None,
+    pretrained_d: str | None = None,
+) -> tuple[str, str]:
     rvc = third_party_rvc()
-    path_str = "" if version == "v1" else "_v2"
-    g = rvc / "assets" / f"pretrained{path_str}" / f"f0G{sr}.pth"
-    d = rvc / "assets" / f"pretrained{path_str}" / f"f0D{sr}.pth"
-    # fallback to project assets
-    if not g.is_file():
-        g = assets_dir() / f"pretrained{path_str}" / f"f0G{sr}.pth"
-    if not d.is_file():
-        d = assets_dir() / f"pretrained{path_str}" / f"f0D{sr}.pth"
+    g = Path(pretrained_g) if pretrained_g else None
+    d = Path(pretrained_d) if pretrained_d else None
+    if g is None or d is None or not g.is_file() or not d.is_file():
+        path_str = "" if version == "v1" else "_v2"
+        g = rvc / "assets" / f"pretrained{path_str}" / f"f0G{sr}.pth"
+        d = rvc / "assets" / f"pretrained{path_str}" / f"f0D{sr}.pth"
+        # fallback to project assets
+        if not g.is_file():
+            g = assets_dir() / f"pretrained{path_str}" / f"f0G{sr}.pth"
+        if not d.is_file():
+            d = assets_dir() / f"pretrained{path_str}" / f"f0D{sr}.pth"
     mute = rvc / "logs" / "mute" / "0_gt_wavs" / f"mute{sr}.wav"
     missing = []
     if not g.is_file():
@@ -118,7 +126,8 @@ def _ensure_training_assets(version: str, sr: str) -> tuple[str, str]:
         raise MissingDependencyError(
             "训练所需的官方底模或 mute 样本缺失：\n"
             + "\n".join(f"  - {m}" for m in missing)
-            + "\n请运行：./scripts/download_base_models.sh --with-pretrained"
+            + "\n请将成对的 f0G{sr}.pth / f0D{sr}.pth 放到 assets/pretrained_v2 或 assets/pretrained_custom，"
+            "也可运行：./scripts/download_base_models.sh --with-pretrained"
         )
     return str(g), str(d)
 
@@ -216,6 +225,8 @@ def run_training(
     f0_method: str = "rmvpe",
     slice_sec: float = 3.7,
     progress: Optional[ProgressCb] = None,
+    pretrained_g: str | None = None,
+    pretrained_d: str | None = None,
 ) -> dict:
     _stop_flag.clear()
     if not authorized:
@@ -231,7 +242,8 @@ def run_training(
         raise UsageError(f"{src} 中没有 WAV/FLAC 录音。请先录音或导入授权音频。")
 
     rvc = third_party_rvc()
-    pre_g, pre_d = _ensure_training_assets(version, sample_rate)
+    pre_g, pre_d = _ensure_training_assets(version, sample_rate, pretrained_g, pretrained_d)
+    _notify(progress, f"训练底模：\n  G={pre_g}\n  D={pre_d}")
     sr_hz = {"32k": 32000, "40k": 40000, "48k": 48000}[sample_rate]
     exp_dir = rvc / "logs" / safe
     exp_dir.mkdir(parents=True, exist_ok=True)

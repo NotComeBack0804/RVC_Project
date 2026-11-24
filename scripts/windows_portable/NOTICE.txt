@@ -1,0 +1,31 @@
+NOTICE — third-party components in the Windows portable package
+
+This portable distribution bundles independent components. Their licenses
+are included next to the corresponding files or under docs/.
+
+- Python 3.12 embeddable (PSF License)
+  https://docs.python.org/3/license.html
+
+- Official RVC (Retrieval-based-Voice-Conversion-WebUI) and its LICENSE
+  third_party/Retrieval-based-Voice-Conversion-WebUI/LICENSE
+  docs/LICENSE-RVC.txt
+
+- PyTorch 2.4.1 CPU, torchaudio, torchvision (BSD-style)
+- torch-directml 0.2.5.dev240914 (Microsoft / PyTorch DirectML)
+- onnxruntime-directml (MIT)
+- Other Python packages under runtime/Lib/site-packages (see each .dist-info)
+
+- FFmpeg essentials build (GPL). License files are copied into
+  runtime/ffmpeg/. Source: https://ffmpeg.org/  https://www.gyan.dev/ffmpeg/builds/
+
+- Microsoft Visual C++ Redistributable installer (runtime/vc_redist.x64.exe)
+  is provided so the portable interpreter can start. It is distributed by
+  Microsoft; install it on the target machine if prompted.
+
+- Public base models from lj1995/VoiceConversionWebUI (HuBERT, RMVPE, v2 40k
+  pretrained generators/discriminators). This package does not include any
+  third-party voice models (.pth of a person) or user recordings.
+
+This project itself is for converting a voice you own or have explicit
+authorization to use. Do not upload reference audio or trained timbre models
+to the cloud.

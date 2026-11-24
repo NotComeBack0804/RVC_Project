@@ -1,0 +1,71 @@
+# Windows portable runtime (Python 3.12 x64) — DirectML, no CUDA.
+# Used by scripts/build_windows_portable.py. Markers are omitted so the
+# Linux packager can fetch Windows wheels. Do not install plain
+# onnxruntime alongside onnxruntime-directml (same Python module name).
+#
+# torch-directml 0.2.5 is built against the PyTorch 2.4.1 family.
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch==2.4.1+cpu
+torchaudio==2.4.1+cpu
+torchvision==0.19.1+cpu
+torch-directml==0.2.5.dev240914
+
+# Gradio 3.14 still imports pkg_resources.
+setuptools>=75.0,<81
+wheel>=0.45,<1
+packaging>=24.0
+
+av>=15.1.0,<16
+einops>=0.8.0,<1
+faiss-cpu>=1.13.0,<2
+ffmpeg-python>=0.2.0,<1
+FreeSimpleGUI>=5.1.0,<5.2
+librosa>=0.10.2,<0.11
+local-attention>=1.11.0,<2
+hyper-connections>=0.1.8,<0.4.3
+matplotlib>=3.8.2,<4
+networkx>=3.2.0,<4
+numpy==1.26.4
+# SciPy 1.16+ / OpenCV 4.12+ require NumPy 2; official RVC stays on NumPy 1.x.
+
+onnxruntime-directml>=1.24.4,<2
+coloredlogs>=15.0,<16
+
+opencv-python-headless>=4.10.0,<4.12
+praat-parselmouth>=0.4.5,<1
+PyYAML>=6.0
+scikit-learn>=1.6.0,<2
+scipy>=1.13.1,<1.16
+sounddevice>=0.5.0,<1
+soundfile>=0.13.0,<1
+tensorboard>=2.19.0
+torchfcpe>=0.0.4,<0.1
+tqdm>=4.67.0,<5
+transformers>=4.49.0,<4.50
+
+gradio>=3.14.0,<3.15
+altair>=4.2.0,<5
+anyio>=3.6.2,<4
+fastapi>=0.88.0,<0.100
+httpx>=0.23.0,<0.24
+markdown-it-py>=2.2.0,<3
+mdit-py-plugins>=0.3.3,<0.4
+pydantic>=1.10.13,<2
+pyparsing>=3.0.9,<3.1
+starlette>=0.22.0,<0.28
+uvicorn>=0.20.0,<0.23
+websockets>=10.4,<11
+
+huggingface_hub>=0.26.0,<1.0
+
+# websockets>=10.4,<11 is required by Gradio 3.14, but 10.4 has no cp312 /
+# win_amd64 wheel (sdist only). The packager installs the pure-Python sdist
+# and skips the optional C speedups. Do not bump to websockets 11+ without
+# re-checking Gradio 3.14 compatibility.
+#
+# When this file is resolved on Linux, do not let pip evaluate torch's
+# `platform_system == "Linux"` NVIDIA CUDA extras — those must not be
+# installed into the Windows portable runtime. Use
+# scripts/build_windows_portable.py, which evaluates markers as Windows.

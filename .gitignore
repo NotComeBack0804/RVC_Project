@@ -31,3 +31,8 @@ third_party/Retrieval-based-Voice-Conversion-WebUI/
 assets/pretrained/
 assets/pretrained_v2/
 logs/
+
+# User-supplied training bases (drop-in; do not commit model files)
+assets/pretrained_custom/*
+!assets/pretrained_custom/.gitkeep
+!assets/pretrained_custom/README.md

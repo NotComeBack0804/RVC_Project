@@ -1,0 +1,65 @@
+name: Build Windows DirectML portable
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/build_windows_portable.py"
+      - "scripts/requirements-windows-directml.txt"
+      - "scripts/windows_portable/**"
+      - "rvc_realtime/**"
+      - ".github/workflows/build-windows-portable.yml"
+
+jobs:
+  pack:
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout this project
+        uses: actions/checkout@v4
+
+      - name: Clone official RVC sources
+        shell: bash
+        run: |
+          mkdir -p third_party
+          if [ ! -f third_party/Retrieval-based-Voice-Conversion-WebUI/requirments_cpu_py312.txt ]; then
+            git clone --depth 1 https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI.git \
+              third_party/Retrieval-based-Voice-Conversion-WebUI
+          fi
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packager dependencies
+        run: python -m pip install -U pip packaging huggingface_hub
+
+      - name: Download public base models
+        shell: bash
+        run: |
+          python scripts/download_base_models.py --with-onnx --with-pretrained
+
+      - name: Build portable zip
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/rvc-windows-cache" "$RUNNER_TEMP/rvc-windows-stage"
+          python scripts/build_windows_portable.py \
+            --cache "$RUNNER_TEMP/rvc-windows-cache" \
+            --stage "$RUNNER_TEMP/rvc-windows-stage" \
+            --output "$RUNNER_TEMP/rvc-windows-directml.zip" \
+            --src "$GITHUB_WORKSPACE"
+
+      - name: Upload portable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: rvc-windows-directml
+          path: |
+            ${{ runner.temp }}/rvc-windows-directml.zip
+            ${{ runner.temp }}/rvc-windows-directml-runtime.zip
+            ${{ runner.temp }}/rvc-windows-directml-models.zip
+            ${{ runner.temp }}/rvc-windows-directml-README.txt
+            ${{ runner.temp }}/rvc-windows-directml-SHA256SUMS.txt
+          if-no-files-found: warn
+          retention-days: 14

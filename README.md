@@ -59,14 +59,14 @@
 .\.venv-rvc\Scripts\python.exe -m rvc_realtime serve --host 127.0.0.1 --port 7870
 ```
 
-浏览器打开 http://127.0.0.1:7870 。首页就是「游戏短音频变身」一条龙，面向鹅鸭杀、狼人杀这类 1–2 分钟纯净发言。顶部会标明当前计算设备（Windows 上应为 DirectML，本开发盒子为 CPU）：
+浏览器打开 http://127.0.0.1:7870 。首页就是「游戏短音频变身」一条龙，面向鹅鸭杀、狼人杀这类 1–2 分钟纯净发言。顶部会标明当前计算设备（Windows 上应为 DirectML，本开发盒子为 CPU）。左侧步骤栏可点击，分别进入录音、训练和实时变声：
 
 1. 勾选「这是已授权的声音」。
-2. 选择 1 分钟或 2 分钟，点 **「开始录制扬声器」**（到时自动停止，也可「停止并保存」）。录的是电脑正在播放的声音。Windows 默认优先 WASAPI 环回或立体声混音；Linux 默认 `speakers.monitor`。麦克风只在折叠的「高级设置」里。录音时先不要开实时变声，也不要从 CABLE 录，以免把变声结果再录进去。没有环回时，可导入已有短 WAV。
-3. 模型名默认 `game_voice`，点 **「一键训练」**。预设为 RVC v2 / 40k / 60 轮 / 切分 3.0 秒 / batch 1 / rmvpe，针对短干净说话，减轻背词。进度可看，可中断。产出 `assets/weights/game_voice.pth`。
+2. 选择 1 分钟或 2 分钟，点 **「开始录制扬声器」**（到时自动停止，也可「停止并保存」）。录的是电脑正在播放的声音。Windows 默认优先 WASAPI 环回或立体声混音；Linux 默认 `speakers.monitor`。要换录音扬声器或输出/虚拟麦克风，点左侧 **「系统设置」**。麦克风作为次要输入，也在系统设置里。录音时先不要开实时变声，也不要从 CABLE 录，以免把变声结果再录进去。没有环回时，可导入已有短 WAV。
+3. 模型名默认 `game_voice`，训练底模默认 RVC v2 40k（`f0G40k` / `f0D40k`），可在训练页更换或导入。点 **「一键训练」**。预设为 60 轮 / 切分 3.0 秒 / batch 1 / rmvpe，针对短干净说话，减轻背词。进度可看，可中断。产出 `assets/weights/game_voice.pth`。
 4. 点 **「一键开始实时变声」**。默认音高 0、缓冲 160 ms、响度对齐输入。Windows：程序输出选 **CABLE Input**，游戏或聊天软件麦克风选 **CABLE Output**。请戴耳机。可随时切回真实麦克风。
 
-轮数、音高、缓冲、麦克风选择、直通等全部放在默认收起的「高级设置」里。高级里的「模拟实时」只用测试 WAV 看处理耗时，**不能**当成已经用真实麦克风或游戏语音做了通话验收。
+轮数、音高、缓冲、路径和直通放在「系统设置」弹窗的 **「高级设置」** 页。那里的「模拟实时」只用测试 WAV 看处理耗时，**不能**当成已经用真实麦克风或游戏语音做了通话验收。
 
 ## 1. 安装
 
@@ -100,6 +100,8 @@ python -m rvc_realtime self-test
 若使用 `uv` 安装该官方依赖文件，脚本会自动加上 `--index-strategy unsafe-best-match`。原因是该文件同时声明了多个 index，uv 默认只采用「某个包首次出现的源」，否则可能把 `tqdm` 等包卡在 PyTorch CPU 索引的旧版本上。这不会安装 CUDA。
 
 ### 1.2 Windows（目标使用环境：Windows + AMD RX 7800 XT）
+
+若只想在 Windows 上使用，推荐解压开箱即用便携包，双击 `Start-UI.bat` 即可启动界面并默认走 AMD DirectML，不必自行安装 Python 或运行 `install_windows.ps1`。说明见 [`docs/windows-portable.md`](docs/windows-portable.md)。下面是从源码安装的步骤。
 
 1. 安装 [Python 3.12 x64](https://www.python.org/downloads/)，安装时勾选 Add python.exe to PATH。
 2. 安装 [VB-CABLE](https://vb-audio.com/Cable/)。本仓库不会在 Linux 上安装 Windows 驱动，也请不要在 Linux 盒子上强行安装它。
@@ -318,6 +320,9 @@ cd /workspace/rvc-realtime-voice
 ```bash
 ./scripts/download_base_models.sh --with-pretrained
 ```
+
+也可以把更好的底模对（`f0G40k.pth` 与 `f0D40k.pth` 这类成对文件）放到 `assets/pretrained_v2/` 或 `assets/pretrained_custom/`，在界面训练区选择并刷新即可，不必改代码。约定见 [docs/pretrained-bases.md](docs/pretrained-bases.md)。
+
 
 `testdata/train_smoke_jfk/` 里的 JFK 片段只用于验证训练链路能写出权重，说明见 `testdata/TRAIN_SMOKE_JFK.md`。不要把它当成对外使用的音色，也不要用 Shadowww 的声音再训一个「新音色」去冒充。
 
