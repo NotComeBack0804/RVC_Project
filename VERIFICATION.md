@@ -17,7 +17,7 @@
 5. **文件直通**：测试音 4.000 s 原样写出，RMS=0.1762，与源一致。
 6. **虚拟设备直通**：从 `speakers.monitor` 录回约 3.680 s，有声，主频约 439.95 Hz。
 7. **缺模型变声路径**：当时 `assets/weights/` 为空时，`--mode convert` 以退出码 2 结束，打印中文说明，没有崩溃，也没有写出输出文件。
-8. **公开基础模型**：HuBERT 与 `assets/rmvpe/rmvpe.pt` 已下载。未下载他人音色模型。`rmvpe.onnx` 未下载（仅 Windows DirectML 后续路径需要）。
+8. **公开基础模型**：HuBERT 与 `assets/rmvpe/rmvpe.pt` 已下载。未下载他人音色模型。`rmvpe.onnx` 未下载（Linux CPU 路径不需要；Windows DirectML 的 RMVPE 必需，由 Windows 下载脚本默认获取）。
 9. **训练骨架**：无授权确认或无录音时拒绝开始训练。
 
 `python -m rvc_realtime self-test` 当时总体结果：通过。原始 JSON 见 `testdata/recorded/selftest_report.json`。
@@ -186,7 +186,7 @@ v2 使用默认 `--loudness-mode match-input`（文件级对齐后再限制峰�
 3. 未在 Windows 上安装或测试 VB-CABLE，未对接聊天软件。
 4. 未尝试 AMD RX 7800 XT / DirectML / ROCm。
 5. 未使用用户本人的授权参考录音做完整质量训练（仅用公有领域 JFK 做了 1 轮链路冒烟）。
-6. `rmvpe.onnx` 未下载（仅 Windows DirectML 后续路径需要）。
+6. `rmvpe.onnx` 未下载（Linux CPU 路径不需要；Windows DirectML 的 RMVPE 必需，由 Windows 下载脚本默认获取）。
 7. 模拟实时在 200 ms 缓冲下，估计输入+输出缓冲约 400 ms，尚未达到 100–200 ms 单向端到端目标。
 
 ## 在目标 Windows 机器上建议复测

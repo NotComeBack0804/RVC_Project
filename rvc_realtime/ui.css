@@ -289,3 +289,34 @@ div.form > * {
 #btn-live {
   min-width: 168px;
 }
+
+
+/* 计算设备条：让用户一眼看到是 DirectML 还是 CPU */
+#compute-banner {
+  margin: -8px 0 22px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #2a2e38;
+  background: #161a22;
+  color: #d7dbe6;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+#compute-banner.ok {
+  border-color: #2f5d46;
+  background: #13231c;
+  color: #d7eee3;
+}
+#compute-banner.cpu {
+  border-color: #4a4530;
+  background: #1f1c14;
+}
+#compute-banner strong {
+  font-weight: 650;
+  color: #f4f6fa;
+}
+#compute-banner .compute-reason {
+  margin-top: 4px;
+  color: #a7afc2;
+  font-size: 12.5px;
+}

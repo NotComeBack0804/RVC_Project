@@ -48,9 +48,11 @@ def _download_hf(repo: str, revision: str, include: str | None, filename: str | 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="下载 HuBERT / RMVPE 公开基础模型")
-    parser.add_argument("--with-onnx", action="store_true", help="额外下载 rmvpe.onnx（Windows DirectML 后续路径需要）")
+    parser.add_argument("--with-onnx", action="store_true", help="额外下载 rmvpe.onnx（Windows DirectML 的 RMVPE 必需；Windows 上默认开启）")
+    parser.add_argument("--no-onnx", action="store_true", help="不要下载 rmvpe.onnx")
     parser.add_argument("--with-pretrained", action="store_true", help="额外下载官方训练底模（体积较大，仅在你准备训练自己的授权模型时使用）")
     args = parser.parse_args()
+    want_onnx = (args.with_onnx or sys.platform == "win32") and not args.no_onnx
 
     print("只下载公开基础模型，不会下载或附带任何他人音色（.pth）。")
     print(f"目标目录：{assets_dir()}")
@@ -59,7 +61,7 @@ def main() -> int:
     _download_hf(REPO, REVISION, include="hubert_base/*", filename=None, local_dir=assets_dir())
     _download_hf(REPO, REVISION, include=None, filename="rmvpe.pt", local_dir=rmvpe_dir())
 
-    if args.with_onnx:
+    if want_onnx:
         _download_hf(REPO, REVISION, include=None, filename="rmvpe.onnx", local_dir=rmvpe_dir())
 
     if args.with_pretrained:
@@ -96,7 +98,7 @@ def main() -> int:
     rmvpe = rmvpe_dir() / RMVPE_PT
     if not rmvpe.is_file() or rmvpe.stat().st_size == 0:
         missing.append(str(rmvpe))
-    if args.with_onnx:
+    if want_onnx:
         onnx = rmvpe_dir() / RMVPE_ONNX
         if not onnx.is_file() or onnx.stat().st_size == 0:
             missing.append(str(onnx))

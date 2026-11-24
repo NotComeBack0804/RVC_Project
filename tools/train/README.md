@@ -34,7 +34,7 @@ testdata/authorized_reference/
    python tools/train/prepare_dataset.py --i-have-authorization
    ```
 
-2. 确认已安装完整 RVC CPU 环境，并已下载训练底模：
+2. 确认已安装完整 RVC 环境（Windows 为 DirectML，Linux 为 CPU），并已下载训练底模：
 
    ```bash
    ./scripts/install_linux.sh --with-rvc-cpu
@@ -51,4 +51,4 @@ testdata/authorized_reference/
 4. 导出的 `.pth` 放到 `assets/weights/`，可选 `.index` 放到 `assets/indices/`。
 5. 再回到实时程序做对比测试。
 
-CPU 可以用于训练，但速度可能较慢。AMD RX 7800 XT 是否能加速训练，需要在独立环境中单独验证（Windows 可先试 DirectML），不要直接把 CUDA 配置照搬到 AMD 环境。
+Windows + AMD 显卡（例如 RX 7800 XT）上，完整安装后训练默认走 DirectML；只有探测失败时才回退 CPU。Linux 开发环境使用 CPU。不要把 CUDA 配置照搬到 AMD 环境。

@@ -16,7 +16,7 @@ USAGE_BANNER = (
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m rvc_realtime",
-        description="本地实时语音转换（CPU 起步）。先验证直通，再加载已授权的 RVC 模型。",
+        description="本地实时语音转换。Windows 上默认优先 DirectML 显卡，其它情况回退 CPU。先验证直通，再加载已授权的 RVC 模型。",
         epilog=USAGE_BANNER,
     )
     sub = parser.add_subparsers(dest="command", required=True)
@@ -52,6 +52,7 @@ def _parser() -> argparse.ArgumentParser:
     p_run.add_argument("--gain-db", type=float, default=0.0, help="在自动对齐之外再叠加的增益（dB）")
     p_run.add_argument("--peak-limit", type=float, default=0.95)
     p_run.add_argument("--simulate-realtime", action="store_true", help="按块时长等待，用于无麦克风时的模拟实时验收")
+    p_run.add_argument("--compute-device", choices=("auto", "directml", "cpu"), default=None, help="计算设备：Windows 默认 auto 即优先 DirectML，失败则回退 CPU")
 
     p_test = sub.add_parser("self-test", help="在本机验证直通、虚拟设备和缺模型报错")
     p_test.add_argument("--skip-pulse", action="store_true")
@@ -59,6 +60,7 @@ def _parser() -> argparse.ArgumentParser:
     p_serve = sub.add_parser("serve", help="启动本地中文界面（录音、训练、实时变声）")
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=7870)
+    p_serve.add_argument("--compute-device", choices=("auto", "directml", "cpu"), default=None, help="计算设备：Windows 默认 auto 即优先 DirectML，失败则回退 CPU")
 
     p_train = sub.add_parser("train", help="用已授权录音训练并导出 .pth / 索引")
     p_train.add_argument("--audio-dir", required=True)
@@ -69,6 +71,7 @@ def _parser() -> argparse.ArgumentParser:
     p_train.add_argument("--epochs", type=int, default=200)
     p_train.add_argument("--batch-size", type=int, default=1)
     p_train.add_argument("--f0-method", choices=("rmvpe", "pm"), default="rmvpe")
+    p_train.add_argument("--compute-device", choices=("auto", "directml", "cpu"), default=None, help="计算设备：Windows 默认 auto 即优先 DirectML，失败则回退 CPU")
     return parser
 
 
@@ -76,6 +79,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
     print(USAGE_BANNER, flush=True)
+    if getattr(args, "compute_device", None):
+        from rvc_realtime.compute import apply_compute_override
+
+        apply_compute_override(args.compute_device)
     try:
         if args.command == "status":
             from rvc_realtime.status import gather_status

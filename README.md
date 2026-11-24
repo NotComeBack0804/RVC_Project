@@ -1,4 +1,4 @@
-# 本地实时语音转换（CPU 起步）
+# 本地实时语音转换
 
 把**你本人的声音，或已获得明确授权的声音**，预先做成固定的 RVC 音色模型，再在聊天时把麦克风声音实时转换成目标音色，并作为虚拟麦克风送给聊天软件。
 
@@ -20,7 +20,7 @@
 真实麦克风 → 实时语音转换 → 虚拟音频设备 → 聊天软件
 ```
 
-先用 CPU 把整条链路跑通，再考虑在**独立环境**里尝试 AMD RX 7800 XT（Windows DirectML）。不要把这套 CPU 环境改成 CUDA 安装。
+在 Windows + AMD 显卡（例如 RX 7800 XT）上，完整环境默认用 DirectML 走显卡做训练和实时变声；DirectML 不可用时会明确提示并回退 CPU。Linux 开发环境继续使用 CPU。不要把这套环境改成 CUDA 安装。
 
 ## 推荐实施顺序
 
@@ -29,17 +29,17 @@
     ↓
 验证：麦克风或测试音源 → 程序直通 → 虚拟设备 → 录音/聊天软件
     ↓
-安装轻量 Python 环境
+安装轻量 Python 环境（可选，仅直通）
     ↓
-（可选）下载 HuBERT / RMVPE 公开基础模型
+安装独立的完整 RVC 环境 .venv-rvc（Windows 含 DirectML，Linux 为 CPU）
     ↓
-（可选）安装独立的 RVC CPU 推理环境，加载已授权 .pth
+下载 HuBERT / RMVPE 公开基础模型（Windows 默认含 rmvpe.onnx）
+    ↓
+确认计算设备：status / 界面顶部应显示 DirectML 或 CPU 回退原因
     ↓
 整理授权参考音频并训练自己的模型
     ↓
 测量延迟并调节缓冲
-    ↓
-在新的独立环境中尝试 DirectML，保留 CPU 环境作为回退
 ```
 
 
@@ -59,7 +59,7 @@
 .\.venv-rvc\Scripts\python.exe -m rvc_realtime serve --host 127.0.0.1 --port 7870
 ```
 
-浏览器打开 http://127.0.0.1:7870 。首页就是「游戏短音频变身」一条龙，面向鹅鸭杀、狼人杀这类 1–2 分钟纯净发言：
+浏览器打开 http://127.0.0.1:7870 。首页就是「游戏短音频变身」一条龙，面向鹅鸭杀、狼人杀这类 1–2 分钟纯净发言。顶部会标明当前计算设备（Windows 上应为 DirectML，本开发盒子为 CPU）：
 
 1. 勾选「这是已授权的声音」。
 2. 选择 1 分钟或 2 分钟，点 **「开始录制扬声器」**（到时自动停止，也可「停止并保存」）。录的是电脑正在播放的声音。Windows 默认优先 WASAPI 环回或立体声混音；Linux 默认 `speakers.monitor`。麦克风只在折叠的「高级设置」里。录音时先不要开实时变声，也不要从 CABLE 录，以免把变声结果再录进去。没有环回时，可导入已有短 WAV。
@@ -89,7 +89,7 @@ python -m rvc_realtime self-test
 ./scripts/download_base_models.sh
 ```
 
-完整 RVC CPU 推理（体积较大，请使用独立虚拟环境，不要混入 CUDA）：
+完整 RVC CPU 推理（Linux；体积较大，请使用独立虚拟环境，不要混入 CUDA）：
 
 ```bash
 ./scripts/install_linux.sh --with-rvc-cpu
@@ -115,13 +115,15 @@ python -m rvc_realtime self-test --skip-pulse
 .\scripts\download_base_models.ps1
 ```
 
-需要完整 CPU 推理（官方依赖在 Windows 上可能包含 DirectML 包，仅 Windows 生效；Linux 仍走 CPU）：
+需要完整推理和训练时，安装官方 CPU/AMD 依赖（Windows 会安装 DirectML，仅 Windows 生效；Linux 仍走 CPU）。这是 RX 7800 XT 的主路径，安装后默认走显卡：
 
 ```powershell
 .\scripts\install_windows.ps1 -WithRvcCpu
 ```
 
-系统依赖也可以对照官方 README：不要在 CPU 方案里执行 CUDA 安装命令。
+安装结束时会打印计算设备。应看到 `DirectML` 和 `privateuseone:0`；若显示 CPU，请按回退原因检查 AMD 驱动或重新安装依赖。也可用 `.\.venv-rvc\Scripts\python.exe -m rvc_realtime status` 再确认。Windows 上 `download_base_models.ps1` 会默认下载 `rmvpe.onnx`（DirectML 的 RMVPE 必需）。训练自己的授权音色还需要：`.\scripts\download_base_models.ps1 --with-pretrained`。
+
+更完整的安装、启动和确认步骤见 [docs/windows.md](docs/windows.md)。系统依赖也可以对照官方 README：不要额外执行 CUDA 安装命令。
 
 ## 2. 音频路由
 
@@ -212,7 +214,7 @@ python -m rvc_realtime run --mode passthrough `
 
 ### 2.4 官方实时 GUI（可选）
 
-完整 RVC CPU 环境安装完成后，也可以使用官方实时界面（Windows 上为 `go-realtime_gui.bat`，源码入口 `realtime_gui.py`）。把已授权 `.pth` 放到官方文档指定的 `assets/weights/`，或继续使用本仓库的 `assets/weights/` 并在 GUI 中浏览该路径。音高提取先选用 CPU 可运行的设置。
+完整 RVC 环境安装完成后，也可以使用官方实时界面（Windows 上为 `go-realtime_gui.bat`，源码入口 `realtime_gui.py`）。把已授权 `.pth` 放到官方文档指定的 `assets/weights/`，或继续使用本仓库的 `assets/weights/` 并在 GUI 中浏览该路径。Windows 上官方配置在没有 NVIDIA GPU 时会自动选择 DirectML。
 
 ## 3. 模型如何放置
 
@@ -220,7 +222,7 @@ python -m rvc_realtime run --mode passthrough `
 assets/
 ├── hubert_base/          # 公开 HuBERT（download 脚本下载）
 ├── rmvpe/rmvpe.pt        # 公开 RMVPE
-├── rmvpe/rmvpe.onnx      # 仅 Windows DirectML 后续路径需要
+├── rmvpe/rmvpe.onnx      # Windows DirectML 的 RMVPE 必需；Windows 下载脚本默认获取
 ├── weights/              # 你自己的已授权 RVC .pth
 └── indices/              # 可选的检索索引 .index
 ```
@@ -309,7 +311,7 @@ cd /workspace/rvc-realtime-voice
 - 模型：`assets/weights/myvoice.pth`
 - 索引：`assets/indices/added_myvoice.index`（以及官方命名的 `added_IVF…` 文件）
 
-CPU 耗时很粗的经验：约 11 秒公有领域测试音频、1 轮，在本开发盒子上大约 1 分钟内可以跑完切分、特征、训练和索引（其中 1 轮训练约 23 秒）。1–3 分钟录音、数轮训练往往要数十分钟；10–30 分钟语料、上百轮在 CPU 上可能需要数小时。请在界面查看进度，必要时点「中断训练」。
+本开发盒子（Linux CPU）耗时很粗的经验：约 11 秒公有领域测试音频、1 轮，大约 1 分钟内可以跑完切分、特征、训练和索引（其中 1 轮训练约 23 秒）。在 Windows + RX 7800 XT 上，DirectML 通常会更快，但仍以本机日志为准。若回退到 CPU，1–3 分钟录音、数轮训练往往要数十分钟；10–30 分钟语料、上百轮可能需要数小时。请在界面查看进度和计算设备，必要时点「中断训练」。
 
 训练还需要官方底模和 mute 样本。若缺失，运行：
 
@@ -349,21 +351,22 @@ CPU 耗时很粗的经验：约 11 秒公有领域测试音频、1 轮，在本�
 
 默认已开启 `--loudness-mode match-input`：按输入 RMS 做响度对齐，并把峰值限制在约 0.95，避免削波。界面实时页也可调节输出音量。若仍偏小，可适当增加增益，但不要把峰值顶满。
 
-### CPU 延迟太高
+### 延迟太高
 
-先减小其他后台负载，再调整缓冲区和音高提取方式。若仍不满足实时通话要求，再进入 AMD 加速阶段。
+先确认界面或 `status` 显示的计算设备。Windows 上若仍是 CPU，按回退原因检查 DirectML 是否可用。已走到 DirectML 时，先减小其他后台负载，再逐步减小 `--buffer-ms`。
 
-## 8. AMD RX 7800 XT 后续路线（本次不做主路径）
+## 8. Windows + AMD RX 7800 XT（DirectML 主路径）
 
-CPU 流程稳定后，再在**新的独立环境**中尝试加速，避免破坏已经可用的 CPU 环境：
+目标使用环境是 Windows + RX 7800 XT。完整安装后，训练和实时变声默认走 DirectML，不再把显卡加速留到“以后再说”。
 
-1. 保留当前 CPU / 直通环境作为回退。
-2. Windows 下先尝试官方 RVC 文档中的 DirectML 路径，并准备 `rmvpe.onnx`：`./scripts/download_base_models.sh --with-onnx`。
-3. 对比 CPU 与 DirectML 的延迟、稳定性和音质。
-4. 若使用 Linux，再评估 ROCm；不要直接把 CUDA 配置照搬到 AMD 环境。
-5. 只有实测稳定后，才把该后端用于长期通话。
+1. 运行 `.\scripts\install_windows.ps1 -WithRvcCpu`（不要安装 CUDA）。官方依赖会在 Windows 上安装 `torch-directml` 与 `onnxruntime-directml`。
+2. 安装脚本会探测计算设备，并默认下载 `rmvpe.onnx`。DirectML 上的 RMVPE 必须用该文件，设备名是 `privateuseone:0`。
+3. 用 `python -m rvc_realtime status` 或界面顶部的「当前计算设备」确认显示 DirectML 和适配器名。
+4. 按「游戏短音频变身」录制、训练、实时变声。可用 `RVC_COMPUTE_DEVICE=cpu` 强制回退。
+5. Linux 开发盒子没有这块显卡，也没有 DirectML，会保持 CPU 回退；这是预期行为。
+6. 不要把 CUDA 配置照搬到 AMD 环境。若使用 Linux 本机 AMD 显卡，官方路径仍是 CPU，而不是 ROCm 或 CUDA。
 
-显卡能否带来明显收益，取决于实时客户端、PyTorch/ONNX 后端、驱动、模型和音高提取器的具体组合，不能只根据 RX 7800 XT 这个型号推断最终延迟。
+显卡能否把延迟压到 100–200 ms，取决于驱动、模型、缓冲和聊天软件，需要在目标机上实测，不能只根据 RX 7800 XT 这个型号推断。详细步骤见 [docs/windows.md](docs/windows.md)。
 
 ## 9. 开发盒子上的限制
 
@@ -373,7 +376,7 @@ CPU 流程稳定后，再在**新的独立环境**中尝试加速，避免破坏
 
 - 没有真实麦克风。预置的 `mic` 是空的静音源，不能当作话筒。
 - 系统 PulseAudio 使用 `--disallow-module-loading`，因此无法新建 `RVC_Cable_In`。自检已改用预置空沉 `speakers` 和监听源 `speakers.monitor`，并成功录到测试音。
-- 轻量直通环境在 `.venv`。完整 RVC CPU 推理环境已在 `.venv-rvc` 装好（Python 3.12.16，`torch 2.4.1+cpu`，CUDA 不可用）。变声请用 `.venv-rvc` 里的解释器。
+- 轻量直通环境在 `.venv`。完整 RVC 推理环境已在 `.venv-rvc` 装好（Python 3.12.16，`torch 2.4.1+cpu`，CUDA 不可用）。本开发盒子是 Linux，计算设备为 CPU 回退。Windows 目标机上同一套依赖会安装 DirectML 并默认走显卡。变声请用 `.venv-rvc` 里的解释器。
 - 已用授权测试模型 `assets/weights/shadowww-t02.pth` 完成文件到文件变声：保留 `testdata/recorded/shadowww-t02_convert.wav`（优化前），对比文件为 `shadowww-t02_convert_v2.wav`（优化后，响度与输入对齐，索引按帧融合不再整块跳过）。
 - 实时路径在盒子上做了「模拟实时」：用测试 WAV 按 200 ms 块喂入，写出 `testdata/recorded/simulate_realtime.wav`。这不是真实麦克风或聊天软件验收。
 - 本地界面可在 `127.0.0.1:7870` 启动，首页是「游戏短音频变身」。盒子上默认录音设备是 `speakers.monitor`（扬声器环回）。若环回是静音或不可用，会明确提示，并可导入已有短 WAV。

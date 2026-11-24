@@ -79,3 +79,7 @@ def missing_hubert() -> list[str]:
 
 def missing_rmvpe_pt() -> bool:
     return not rmvpe_status()[RMVPE_PT]
+
+
+def missing_rmvpe_onnx() -> bool:
+    return not rmvpe_status()[RMVPE_ONNX]

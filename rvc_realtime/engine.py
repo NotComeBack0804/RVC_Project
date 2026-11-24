@@ -95,6 +95,9 @@ def run_engine(
     )
     reader = writer = None
     notes: list[str] = []
+    compute = getattr(processor, "compute", None)
+    if compute is not None:
+        notes.append(compute.message)
     chunk_latency_ms: list[float] = []
     buffer_frames = max(1, int(sample_rate * buffer_ms / 1000))
     started = time.perf_counter()
@@ -164,7 +167,7 @@ def run_engine(
             notes.append("平均处理时间超过块时长，实时通话可能出现断续。请增大 --buffer-ms。")
     if proc_rtf > 1.05 and mode == "convert" and not simulate_realtime:
         notes.append(
-            f"处理慢于实时（RTF={rtf:.2f}）。请增大 --buffer-ms，或稍后在独立环境中尝试加速后端。"
+            f"处理慢于实时（RTF={rtf:.2f}）。请增大 --buffer-ms，或确认计算设备是否已走到 DirectML（见上方设备说明）。"
         )
     if est > 250 and not simulate_realtime:
         notes.append(f"估计缓冲延迟约 {est:.0f} ms，可能在通话中感到明显迟滞。建议先保证稳定，再逐步减小缓冲。")

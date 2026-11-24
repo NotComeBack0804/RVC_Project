@@ -15,6 +15,7 @@ from rvc_realtime.devices import (
     preferred_mic_names,
     preferred_output_names,
 )
+from rvc_realtime.compute import select_compute
 from rvc_realtime.errors import AppError
 from rvc_realtime.paths import indices_dir, project_root, testdata_dir, weights_dir
 from rvc_realtime.presets import (
@@ -49,10 +50,33 @@ STEP1_HTML = """
 </div>
 """
 
-STEP2_HTML = """
+def _compute_banner_html() -> str:
+    info = select_compute()
+    cls = "ok" if info.is_directml else "cpu"
+    reason = f'<div class="compute-reason">{info.fallback_reason}</div>' if info.fallback_reason else ""
+    return (
+        f'<div id="compute-banner" class="{cls}">'
+        f'当前计算设备：<strong>{info.label}</strong>'
+        f"{reason}</div>"
+    )
+
+
+def _step2_html() -> str:
+    info = select_compute()
+    if info.is_directml:
+        help_txt = "参数已按 1–2 分钟干净发言预设好，一般不用改。将使用显卡（DirectML）加速训练，可以中断。"
+    elif info.fallback_reason:
+        help_txt = (
+            "参数已按 1–2 分钟干净发言预设好，一般不用改。"
+            f"DirectML 不可用，已回退 CPU。{info.fallback_reason}"
+            "CPU 上可能需要数十分钟到约两小时，可以中断。"
+        )
+    else:
+        help_txt = "参数已按 1–2 分钟干净发言预设好，一般不用改。当前为 CPU，可能需要数十分钟到约两小时，可以中断。"
+    return f"""
 <div class="step-card-title">
   <div class="step-head"><span class="step-num">2</span><p class="step-title">一键训练</p></div>
-  <p class="step-help">参数已按 1–2 分钟干净发言预设好，一般不用改。CPU 上可能需要数十分钟到约两小时，可以中断。</p>
+  <p class="step-help">{help_txt}</p>
 </div>
 """
 
@@ -224,7 +248,9 @@ def start_rt(model, index, in_dev, out_dev, pitch, buffer_ms, gain_db, index_rat
             gain_db=float(gain_db),
             loudness_mode=GAME_REALTIME["loudness_mode"],
         )
-        return session.stats
+        info = select_compute()
+        prefix = info.message + "\n"
+        return prefix + (session.stats or "正在启动实时变声…")
     except AppError as exc:
         return exc.message
 
@@ -319,6 +345,7 @@ def launch_app(host: str = "127.0.0.1", port: int = 7870, share: bool = False) -
         analytics_enabled=False,
     ) as demo:
         gr.HTML(HERO_HTML)
+        gr.HTML(_compute_banner_html())
         with gr.Group(elem_id="auth-row"):
             auth = gr.Checkbox(label=AUTH_LABEL, value=False)
         with gr.Group(elem_id="step-wrap"):
@@ -341,7 +368,7 @@ def launch_app(host: str = "127.0.0.1", port: int = 7870, share: bool = False) -
             rec_import = gr.Button("导入并用作训练素材", variant="secondary")
 
         with gr.Group(elem_id="step-wrap"):
-            gr.HTML(STEP2_HTML)
+            gr.HTML(_step2_html())
             train_name = gr.Textbox(label="模型名", value=DEFAULT_MODEL_NAME)
             train_log = gr.Textbox(label="训练进度", lines=8, elem_id="status-train")
             with gr.Row():

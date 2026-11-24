@@ -15,10 +15,12 @@ from rvc_realtime.errors import (
     MissingDependencyError,
     ModelNotFoundError,
 )
+from rvc_realtime.compute import ComputeInfo, select_compute
 from rvc_realtime.paths import (
     list_user_indices,
     list_user_models,
     missing_hubert,
+    missing_rmvpe_onnx,
     missing_rmvpe_pt,
     project_root,
     third_party_rvc,
@@ -31,6 +33,8 @@ class RuntimeStatus:
     torch_ok: bool
     torch_version: str
     torch_cuda: bool
+    compute: str
+    compute_device: str
     rvc_ok: bool
     rvc_path: str
     message: str
@@ -43,14 +47,20 @@ def probe_runtime() -> RuntimeStatus:
     rvc_ok = False
     rvc_path = str(third_party_rvc())
     notes = []
+    compute_label = "未知"
+    compute_device = "cpu"
     try:
         import torch
 
         torch_ok = True
         torch_version = str(torch.__version__)
         torch_cuda = bool(torch.cuda.is_available())
+        compute = select_compute()
+        compute_label = compute.label
+        compute_device = compute.device_str
+        notes.append(compute.message)
     except Exception as exc:  # noqa: BLE001
-        notes.append(f"未安装 torch（{exc}）。CPU 推理环境尚未就绪。")
+        notes.append(f"未安装 torch（{exc}）。完整推理环境尚未就绪。")
 
     rvc_root = third_party_rvc()
     if not (rvc_root / "infer" / "rtrvc.py").is_file():
@@ -58,15 +68,20 @@ def probe_runtime() -> RuntimeStatus:
     elif torch_ok:
         rvc_ok = True
     else:
-        notes.append("已找到官方 RVC 源码，但缺少 CPU 推理依赖。")
+        notes.append("已找到官方 RVC 源码，但缺少完整推理依赖。")
+
+    if torch_cuda:
+        notes.append("检测到 CUDA 可用，但本项目的 Windows/Linux 安装路径不使用 CUDA，仍按 DirectML 或 CPU 选择设备。")
 
     return RuntimeStatus(
         torch_ok=torch_ok,
         torch_version=torch_version,
         torch_cuda=torch_cuda,
+        compute=compute_label,
+        compute_device=compute_device,
         rvc_ok=rvc_ok,
         rvc_path=rvc_path,
-        message="；".join(notes) if notes else "RVC CPU 推理运行时可用。",
+        message="；".join(notes) if notes else "RVC 推理运行时可用。",
     )
 
 
@@ -171,12 +186,15 @@ class OfficialRvcProcessor:
         if index_path is not None:
             index_path = index_path.resolve()
 
-        class CpuConfig:
-            def __init__(self):
-                self.device = torch.device("cpu")
-                self.is_half = False
+        compute = select_compute()
+        class InferConfig:
+            def __init__(self, info: ComputeInfo):
+                self.device = info.torch_device
+                self.is_half = False  # 官方 DirectML 路径使用 fp32
 
-        self.config = CpuConfig()
+        self.compute = compute
+        self.config = InferConfig(compute)
+        print(compute.message, flush=True)
         self.sample_rate = sample_rate
         self.channels = channels
         self.f0_method = f0_method
@@ -284,8 +302,21 @@ def _missing_base_message() -> str:
         parts.append("缺少 HuBERT 基础模型：" + ", ".join(hubert))
     if missing_rmvpe_pt():
         parts.append("缺少 RMVPE 音高模型：assets/rmvpe/rmvpe.pt")
-    parts.append("请运行：./scripts/download_base_models.sh  或  .\\scripts\\download_base_models.ps1")
+    compute = select_compute()
+    if compute.rmvpe_needs_onnx and missing_rmvpe_onnx():
+        parts.append(
+            "缺少 RMVPE ONNX 模型：assets/rmvpe/rmvpe.onnx。"
+            "Windows DirectML 音高提取必须使用该文件（官方路径：rmvpe.pt 同目录下的 rmvpe.onnx，"
+            "由 onnxruntime-directml 的 DmlExecutionProvider 执行）。"
+        )
+    if compute.rmvpe_needs_onnx:
+        parts.append(
+            r"请运行：.\scripts\download_base_models.ps1   （Windows 会默认下载 rmvpe.onnx）"
+        )
+    else:
+        parts.append(r"请运行：./scripts/download_base_models.sh  或  .\scripts\download_base_models.ps1")
     return "\n".join(parts)
+
 
 
 def build_processor(
@@ -316,17 +347,21 @@ def build_processor(
         missing_base.append("hubert")
     if missing_rmvpe_pt() and f0_method == "rmvpe":
         missing_base.append("rmvpe")
+    compute = select_compute()
+    if compute.rmvpe_needs_onnx and missing_rmvpe_onnx() and f0_method == "rmvpe":
+        missing_base.append("rmvpe.onnx")
     if missing_base:
         raise BaseModelNotFoundError(_missing_base_message())
 
     runtime = probe_runtime()
     if not runtime.rvc_ok:
         raise MissingDependencyError(
-            "已找到授权音色模型，但完整 RVC CPU 推理环境尚未就绪，因此不会开始变声。\n"
+            "已找到授权音色模型，但完整 RVC 推理环境尚未就绪，因此不会开始变声。\n"
             f"{runtime.message}\n"
-            "请在独立环境中安装官方 CPU 依赖（不要混入 CUDA）：\n"
+            "请在独立环境中安装官方 CPU/DirectML 依赖（不要混入 CUDA）：\n"
             "  Linux:   ./scripts/install_linux.sh --with-rvc-cpu\n"
             "  Windows: .\\scripts\\install_windows.ps1 -WithRvcCpu\n"
+            "Windows 上该依赖会安装 torch-directml 与 onnxruntime-directml，默认走显卡。\n"
             f"模型路径：{model_path}"
         )
 

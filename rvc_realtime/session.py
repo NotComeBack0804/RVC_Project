@@ -90,7 +90,13 @@ class RealtimeSession:
                 kwargs["output_spec"], kwargs["sample_rate"], kwargs["channels"], kwargs["buffer_ms"]
             )
             buffer_frames = max(1, int(kwargs["sample_rate"] * kwargs["buffer_ms"] / 1000))
-            self.stats = f"运行中：{kwargs['mode']}  {in_label} → {out_label}  缓冲 {kwargs['buffer_ms']} ms"
+            compute = getattr(processor, "compute", None)
+            device_txt = f"  计算设备 {compute.label}" if compute is not None else ""
+            running = (
+                f"运行中：{kwargs['mode']}  {in_label} → {out_label}  "
+                f"缓冲 {kwargs['buffer_ms']} ms{device_txt}"
+            )
+            self.stats = (compute.message + "\n" + running) if compute is not None else running
             while not self._stop.is_set():
                 chunk = reader.read(buffer_frames)
                 if chunk is None or chunk.size == 0:
@@ -113,9 +119,11 @@ class RealtimeSession:
             extra = ""
             if hasattr(processor, "index_stats"):
                 extra = "  " + processor.index_stats.summary()
+            compute = getattr(processor, "compute", None)
+            device_txt = f" 计算设备 {compute.label}。" if compute is not None else ""
             self.stats = (
                 f"已停止。模式 {kwargs['mode']}，音频 {audio_s:.2f}s，墙钟 {elapsed:.2f}s，"
-                f"平均块处理 {avg:.0f} ms，缓冲 {kwargs['buffer_ms']} ms。{extra}"
+                f"平均块处理 {avg:.0f} ms，缓冲 {kwargs['buffer_ms']} ms。{device_txt}{extra}"
             )
         except Exception as exc:  # noqa: BLE001
             self.error = str(exc)

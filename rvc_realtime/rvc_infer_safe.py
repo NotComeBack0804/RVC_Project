@@ -100,10 +100,10 @@ def install_safe_infer(rvc, stats: IndexStats) -> None:
         t1 = ttime()
         with torch.no_grad():
             if rvc.config.is_half:
-                feats = input_wav.half().view(1, -1)
+                feats = input_wav.to(device=rvc.device).half().view(1, -1)
             else:
-                feats = input_wav.float().view(1, -1)
-            padding_mask = torch.BoolTensor(feats.shape).to(rvc.device).fill_(False)
+                feats = input_wav.to(device=rvc.device).float().view(1, -1)
+            padding_mask = torch.zeros(feats.shape, dtype=torch.bool, device=rvc.device)
             feats = extract_hubert_features(
                 rvc.model,
                 feats,

@@ -12,8 +12,17 @@ import time
 from pathlib import Path
 from typing import Callable, Optional
 
+from rvc_realtime.compute import configure_training_env, select_compute
+from rvc_realtime.dml_train_hook import apply_official_train_hook
 from rvc_realtime.errors import AppError, MissingDependencyError, UsageError
-from rvc_realtime.paths import assets_dir, indices_dir, project_root, third_party_rvc, weights_dir
+from rvc_realtime.paths import (
+    assets_dir,
+    indices_dir,
+    missing_rmvpe_onnx,
+    project_root,
+    third_party_rvc,
+    weights_dir,
+)
 
 ProgressCb = Callable[[str], None]
 
@@ -58,6 +67,7 @@ def _run_step(cwd: Path, args: list[str], log_path: Path, title: str, cb: Option
     env = os.environ.copy()
     env["RVC_CUDA_GRAPH"] = "0"
     env["RVC_AUDIO_FORCE_CPU"] = "1"
+    configure_training_env(env)
     root = str(project_root())
     env["PYTHONPATH"] = os.pathsep.join([root, str(cwd)] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
     with open(log_path, "a", encoding="utf8") as logf:
@@ -187,9 +197,10 @@ def _build_filelist(rvc: Path, exp_dir: Path, version: str, sr: str, use_f0: boo
 
 def estimate_message(audio_dir: Path, epochs: int) -> str:
     wavs = list(Path(audio_dir).glob("*.wav")) + list(Path(audio_dir).glob("*.flac"))
-    # very rough: 1 minute of audio * 1 epoch on CPU often several minutes; 200 epochs can be hours
+    compute = select_compute()
     return (
-        f"将使用 {len(wavs)} 个音频文件，训练 {epochs} 轮（CPU）。"
+        f"将使用 {len(wavs)} 个音频文件，训练 {epochs} 轮。"
+        f"{compute.message}"
         "请保持授权确认，可以随时中断。"
     )
 
@@ -239,23 +250,48 @@ def run_training(
         "数据切分",
         progress,
     )
+    compute = select_compute()
+    _notify(progress, compute.message)
+    _notify(progress, apply_official_train_hook())
+    if compute.is_directml and missing_rmvpe_onnx() and f0_method == "rmvpe":
+        raise MissingDependencyError(
+            "Windows DirectML 音高提取需要 assets/rmvpe/rmvpe.onnx。"
+            "请运行：scripts/download_base_models.ps1（Windows 会默认下载 rmvpe.onnx）"
+        )
+    if compute.is_directml and f0_method == "rmvpe":
+        f0_args = ["dml", str(exp_dir)]
+        hubert_device = compute.device_str  # e.g. privateuseone:0
+    else:
+        if compute.is_directml and f0_method != "rmvpe":
+            _notify(
+                progress,
+                f"当前音高方法是 {f0_method}，官方 DirectML 提取脚本只支持 rmvpe，这一步回退 CPU。",
+            )
+        f0_args = ["cpu", str(exp_dir), "1", f0_method]
+        hubert_device = "cpu"
     _run_step(
         rvc,
-        _official_args("train/dataset/extract_f0.py", ["cpu", str(exp_dir), "1", f0_method]),
+        _official_args("train/dataset/extract_f0.py", f0_args),
         exp_dir / "extract_f0_feature.log",
         "音高提取",
         progress,
     )
     _run_step(
         rvc,
-        _official_args("train/dataset/extract_hubert_feature.py", ["cpu", "1", "0", str(exp_dir), version, "False"]),
+        _official_args(
+            "train/dataset/extract_hubert_feature.py",
+            [hubert_device, "1", "0", str(exp_dir), version, "False"],
+        ),
         exp_dir / "extract_f0_feature.log",
         "特征提取",
         progress,
     )
     n_clips = _build_filelist(rvc, exp_dir, version, sample_rate, use_f0=True)
     _copy_config(rvc, exp_dir, version, sample_rate)
-    _notify(progress, f"可用训练片段：{n_clips}。开始模型训练（{total_epoch} 轮，batch={batch_size}）。")
+    _notify(
+        progress,
+        f"可用训练片段：{n_clips}。开始模型训练（{total_epoch} 轮，batch={batch_size}，设备：{compute.label}）。",
+    )
     _run_step(
         rvc,
         _official_args(

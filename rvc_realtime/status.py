@@ -42,10 +42,11 @@ def gather_status() -> str:
     except Exception as exc:  # noqa: BLE001
         lines.append(f"soundfile：未安装（{exc}）")
 
-    lines.append(f"torch：{runtime.torch_version or '未安装'}  cuda={runtime.torch_cuda}")
+    lines.append(f"torch：{runtime.torch_version or '未安装'}  cuda={runtime.torch_cuda}（本项目不使用 CUDA）")
+    lines.append(f"计算设备：{runtime.compute}  ({runtime.compute_device})")
     lines.append(f"官方 RVC 源码：{'是' if (third_party_rvc() / 'infer' / 'rtrvc.py').is_file() else '否'}  ({runtime.rvc_path})")
     req = official_requirements_cpu()
-    lines.append(f"官方 CPU 依赖文件：{req if req.is_file() else '未找到（文件名以仓库为准，当前为 requirments_cpu_py312.txt）'}")
+    lines.append(f"官方 CPU/DirectML 依赖文件：{req if req.is_file() else '未找到（文件名以仓库为准，当前为 requirments_cpu_py312.txt）'}")
     lines.append(runtime.message)
 
     lines.append("基础模型（公开，仅用于特征与音高，不是他人音色）：")
