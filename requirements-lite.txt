@@ -1,0 +1,6 @@
+# 直通、设备枚举、自检和基础模型下载所需的轻量依赖。
+# 不要在此文件中加入 CUDA / torch。完整 RVC CPU 推理请使用官方
+# third_party/Retrieval-based-Voice-Conversion-WebUI/requirments_cpu_py312.txt
+numpy>=1.26
+soundfile>=0.12
+huggingface_hub>=0.20
