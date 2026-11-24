@@ -1,4 +1,4 @@
-"""本地界面：游戏短音频变身。默认录系统扬声器，一键训练，一键实时变声。不上传云端。"""
+"""本地界面：游戏短音频变声。默认录系统扬声器，一键训练，一键实时变声。不上传云端。"""
 from __future__ import annotations
 
 import math
@@ -45,7 +45,7 @@ BRAND_HTML = """
 <div id="app-brand">
   <div class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
   <div class="brand-text">
-    <h1>游戏短音频变身</h1>
+    <h1>游戏短音频变声</h1>
     <p>本地工作台 · 默认录系统扬声器</p>
   </div>
 </div>
@@ -537,7 +537,7 @@ def launch_app(host: str = "127.0.0.1", port: int = 7870, share: bool = False) -
     audio_dir_default = str(testdata_dir() / "authorized_reference")
 
     with gr.Blocks(
-        title="游戏短音频变身",
+        title="游戏短音频变声",
         css=css_path,
         analytics_enabled=False,
     ) as demo:

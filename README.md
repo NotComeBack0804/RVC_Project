@@ -45,7 +45,7 @@
 
 ## 使用本地界面（推荐）
 
-完整 RVC 环境装好后，用本地中文界面完成预设 **「游戏短音频变身」**：录制扬声器（系统正在播放的声音）→ 一键训练 `.pth` → 一键实时变声。界面只监听本机 `127.0.0.1`，不会做 Gradio 公网分享，也不会上传录音或音色。
+完整 RVC 环境装好后，用本地中文界面完成预设 **「游戏短音频变声」**：录制扬声器（系统正在播放的声音）→ 一键训练 `.pth` → 一键实时变声。界面只监听本机 `127.0.0.1`，不会做 Gradio 公网分享，也不会上传录音或音色。
 
 ```bash
 # Linux
@@ -59,7 +59,7 @@
 .\.venv-rvc\Scripts\python.exe -m rvc_realtime serve --host 127.0.0.1 --port 7870
 ```
 
-浏览器打开 http://127.0.0.1:7870 。首页就是「游戏短音频变身」一条龙，面向鹅鸭杀、狼人杀这类 1–2 分钟纯净发言。顶部会标明当前计算设备（Windows 上应为 DirectML，本开发盒子为 CPU）。左侧步骤栏可点击，分别进入录音、训练和实时变声：
+浏览器打开 http://127.0.0.1:7870 。首页就是「游戏短音频变声」一条龙，面向鹅鸭杀、狼人杀这类 1–2 分钟纯净发言。顶部会标明当前计算设备（Windows 上应为 DirectML，本开发盒子为 CPU）。左侧步骤栏可点击，分别进入录音、训练和实时变声：
 
 1. 勾选「这是已授权的声音」。
 2. 选择 1 分钟或 2 分钟，点 **「开始录制扬声器」**（到时自动停止，也可「停止并保存」）。录的是电脑正在播放的声音。Windows 默认优先 WASAPI 环回或立体声混音；Linux 默认 `speakers.monitor`。要换录音扬声器或输出/虚拟麦克风，点左侧 **「系统设置」**。麦克风作为次要输入，也在系统设置里。录音时先不要开实时变声，也不要从 CABLE 录，以免把变声结果再录进去。没有环回时，可导入已有短 WAV。
@@ -367,7 +367,7 @@ cd /workspace/rvc-realtime-voice
 1. 运行 `.\scripts\install_windows.ps1 -WithRvcCpu`（不要安装 CUDA）。官方依赖会在 Windows 上安装 `torch-directml` 与 `onnxruntime-directml`。
 2. 安装脚本会探测计算设备，并默认下载 `rmvpe.onnx`。DirectML 上的 RMVPE 必须用该文件，设备名是 `privateuseone:0`。
 3. 用 `python -m rvc_realtime status` 或界面顶部的「当前计算设备」确认显示 DirectML 和适配器名。
-4. 按「游戏短音频变身」录制、训练、实时变声。可用 `RVC_COMPUTE_DEVICE=cpu` 强制回退。
+4. 按「游戏短音频变声」录制、训练、实时变声。可用 `RVC_COMPUTE_DEVICE=cpu` 强制回退。
 5. Linux 开发盒子没有这块显卡，也没有 DirectML，会保持 CPU 回退；这是预期行为。
 6. 不要把 CUDA 配置照搬到 AMD 环境。若使用 Linux 本机 AMD 显卡，官方路径仍是 CPU，而不是 ROCm 或 CUDA。
 
@@ -384,7 +384,7 @@ cd /workspace/rvc-realtime-voice
 - 轻量直通环境在 `.venv`。完整 RVC 推理环境已在 `.venv-rvc` 装好（Python 3.12.16，`torch 2.4.1+cpu`，CUDA 不可用）。本开发盒子是 Linux，计算设备为 CPU 回退。Windows 目标机上同一套依赖会安装 DirectML 并默认走显卡。变声请用 `.venv-rvc` 里的解释器。
 - 已用授权测试模型 `assets/weights/shadowww-t02.pth` 完成文件到文件变声：保留 `testdata/recorded/shadowww-t02_convert.wav`（优化前），对比文件为 `shadowww-t02_convert_v2.wav`（优化后，响度与输入对齐，索引按帧融合不再整块跳过）。
 - 实时路径在盒子上做了「模拟实时」：用测试 WAV 按 200 ms 块喂入，写出 `testdata/recorded/simulate_realtime.wav`。这不是真实麦克风或聊天软件验收。
-- 本地界面可在 `127.0.0.1:7870` 启动，首页是「游戏短音频变身」。盒子上默认录音设备是 `speakers.monitor`（扬声器环回）。若环回是静音或不可用，会明确提示，并可导入已有短 WAV。
+- 本地界面可在 `127.0.0.1:7870` 启动，首页是「游戏短音频变声」。盒子上默认录音设备是 `speakers.monitor`（扬声器环回）。若环回是静音或不可用，会明确提示，并可导入已有短 WAV。
 - 已用公有领域 JFK 片段做 1 轮冒烟训练，导出 `assets/weights/smoke_jfk_pd.pth`（仅验证训练链路，不是可用音色产品）。
 - 盒子上没有真实麦克风，因此未做实时通话验收，也不能代替 Windows + VB-CABLE 对接聊天软件的测试。随时可以把聊天软件的麦克风切回真实麦克风。
 
