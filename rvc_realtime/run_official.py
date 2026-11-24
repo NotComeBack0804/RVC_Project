@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -33,13 +34,18 @@ def main(argv: list[str] | None = None) -> int:
         print(f"找不到官方脚本：{script}", file=sys.stderr)
         return 2
     module = script_to_module(rel)
-    os.chdir(rvc)
     pythonpath = os.pathsep.join(
         [str(rvc)] + ([os.environ["PYTHONPATH"]] if os.environ.get("PYTHONPATH") else [])
     )
-    os.environ["PYTHONPATH"] = pythonpath
-    os.execv(sys.executable, [sys.executable, "-m", module, *argv[1:]])
-    return 0  # unreachable
+    env = os.environ.copy()
+    env["PYTHONPATH"] = pythonpath
+    result = subprocess.run(
+        [sys.executable, "-m", module, *argv[1:]],
+        cwd=rvc,
+        env=env,
+        check=False,
+    )
+    return result.returncode
 
 
 if __name__ == "__main__":

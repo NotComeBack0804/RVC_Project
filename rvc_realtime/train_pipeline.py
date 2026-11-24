@@ -67,6 +67,7 @@ def _run_step(cwd: Path, args: list[str], log_path: Path, title: str, cb: Option
     env = os.environ.copy()
     env["RVC_CUDA_GRAPH"] = "0"
     env["RVC_AUDIO_FORCE_CPU"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8:backslashreplace"
     configure_training_env(env)
     root = str(project_root())
     env["PYTHONPATH"] = os.pathsep.join([root, str(cwd)] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
@@ -77,6 +78,8 @@ def _run_step(cwd: Path, args: list[str], log_path: Path, title: str, cb: Option
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            encoding="utf-8",
+            errors="backslashreplace",
             env=env,
         )
         _current_proc = proc

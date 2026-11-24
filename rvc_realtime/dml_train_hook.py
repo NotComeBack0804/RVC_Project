@@ -135,6 +135,25 @@ STEP_NEW = """        ## Load on CUDA or DirectML
 
 PIN_OLD = "        pin_memory=True,\n"
 PIN_NEW = "        pin_memory=torch.cuda.is_available(),\n"
+WORKERS_OLD = "        num_workers=4,\n"
+WORKERS_NEW = "        num_workers=0,\n"
+MULTIPROCESS_OLD = """    if TRAIN_DML_DEVICE is not None:
+        # DirectML does not implement the distributed all-gather used by DDP.
+        run(0, 1, hps, logger, False)
+        return
+    if single_cuda:
+"""
+STOCK_MULTIPROCESS_OLD = """    if single_cuda:
+        run(0, 1, hps, logger, False)
+        return
+    os.environ["MASTER_ADDR"] = "localhost"
+"""
+MULTIPROCESS_NEW = """    if TRAIN_DML_DEVICE is not None or not torch.cuda.is_available():
+        # DirectML lacks the DDP all-gather; Windows CPU spawn multiplies PyTorch memory use.
+        run(0, 1, hps, logger, False)
+        return
+    if single_cuda:
+"""
 
 
 def official_train_script() -> Path:
@@ -156,29 +175,38 @@ def apply_official_train_hook() -> str:
     if not path.is_file():
         return f"未找到官方训练脚本：{path}"
     text = path.read_text(encoding="utf-8")
-    if hook_present(text):
-        return "官方训练脚本已包含 DirectML 挂钩。"
+    already_hooked = hook_present(text)
     missing = []
-    if IMPORT_OLD not in text:
+    if not already_hooked and IMPORT_OLD not in text:
         missing.append("import torch / get_training_dtype")
-    if NETS_OLD not in text:
+    if not already_hooked and NETS_OLD not in text:
         missing.append("net_g/net_d .cuda 放置")
-    if CACHE_OLD not in text:
+    if not already_hooked and CACHE_OLD not in text:
         missing.append("cache 批次 .cuda 放置")
-    if STEP_OLD not in text:
+    if not already_hooked and STEP_OLD not in text:
         missing.append("训练步进 .cuda 放置")
-    if PIN_OLD not in text:
-        missing.append("pin_memory=True")
+    if WORKERS_OLD not in text and WORKERS_NEW not in text:
+        missing.append("DataLoader num_workers=4")
+    if already_hooked and MULTIPROCESS_OLD not in text and MULTIPROCESS_NEW not in text:
+        if STOCK_MULTIPROCESS_OLD not in text:
+            missing.append("训练入口进程启动分支")
     if missing:
         return (
             "官方 train.py 与预期不一致，无法自动加入 DirectML 挂钩（"
             + "、".join(missing)
             + "）。模型训练循环将停留在官方的 CUDA/CPU 路径；音高和特征提取仍可走 DirectML。"
         )
-    text = text.replace(IMPORT_OLD, HOOK_BLOCK, 1)
-    text = text.replace(PIN_OLD, PIN_NEW, 1)
-    text = text.replace(NETS_OLD, NETS_NEW, 1)
-    text = text.replace(CACHE_OLD, CACHE_NEW, 1)
-    text = text.replace(STEP_OLD, STEP_NEW, 1)
+    if not already_hooked:
+        text = text.replace(IMPORT_OLD, HOOK_BLOCK, 1)
+        text = text.replace(NETS_OLD, NETS_NEW, 1)
+        text = text.replace(CACHE_OLD, CACHE_NEW, 1)
+        text = text.replace(STEP_OLD, STEP_NEW, 1)
+        text = text.replace(PIN_OLD, PIN_NEW, 1)
+    if WORKERS_OLD in text:
+        text = text.replace(WORKERS_OLD, WORKERS_NEW, 1)
+    if MULTIPROCESS_OLD in text:
+        text = text.replace(MULTIPROCESS_OLD, MULTIPROCESS_NEW, 1)
+    elif STOCK_MULTIPROCESS_OLD in text:
+        text = text.replace(STOCK_MULTIPROCESS_OLD, MULTIPROCESS_NEW, 1)
     path.write_text(text, encoding="utf-8")
-    return f"已向官方训练脚本写入 DirectML 挂钩：{path}"
+    return f"已应用 DirectML/CPU 单进程与 DataLoader 内存修复：{path}"

@@ -544,7 +544,9 @@ def configure_pth(runtime: Path) -> None:
         raise RuntimeError("embeddable Python is missing pythonXX._pth")
     pth = pths[0]
     pth.write_text(
-        "python312.zip\n.\nLib\\site-packages\n..\nimport site\n",
+        "python312.zip\n.\nLib\\site-packages\n..\n"
+        "..\\third_party\\Retrieval-based-Voice-Conversion-WebUI\n"
+        "import site\n",
         encoding="utf-8",
     )
 
@@ -802,6 +804,8 @@ def verify_stage(dest_root: Path) -> list[str]:
         raise RuntimeError("python312._pth does not enable site")
     if ".." not in pth_text.splitlines():
         raise RuntimeError("python312._pth does not put the package root on sys.path")
+    if "..\\third_party\\Retrieval-based-Voice-Conversion-WebUI" not in pth_text.splitlines():
+        raise RuntimeError("python312._pth does not put the official RVC package on sys.path")
     must_exist(runtime / "sitecustomize.py")
     must_exist(runtime / "ffmpeg" / "ffmpeg.exe")
     must_exist(runtime / "ffmpeg" / "ffprobe.exe")
